@@ -2,36 +2,71 @@ const audioCtx = new (window.AudioContext || window.webkitAudioContext)();
 
 let nyquist = audioCtx.sampleRate / 2;
 let oscilBank = [];
+let synthChoice = 0;
+
+const synthList = document.querySelector("#synthTypeList");
+
+synthList.addEventListener("input", selectSynthType);
 
 let oscNum = 3;
 
+function selectSynthType() {
+    synthChoice = synthList.selectedIndex;  
+}
+
 function createOscillator(incomingFrequency) {  // 'incomingFrequency' is the fundamental frequency of the note
-    let freq = incomingFrequency;
-    let partial = 1;
+    if (synthChoice === 0 || synthChoice === 1) {
+    
+        let freq = incomingFrequency;
+        let partial = 1;
 
-    while (freq <= nyquist) {  // 'while' loops run while a condition remains true
-        let amp = 0.3 * 1;
-        amp /= partial;
+        while (freq <= nyquist) {  // 'while' loops run while a condition remains true
+            let amp = 0.3 * 1;
+            amp /= partial;
 
-        let oscilBankLen = oscilBank.length;
+            let oscilBankLen = oscilBank.length;
 
-        oscilBank[oscilBankLen] = [] // Two-dimensional Array
-        oscilBank[oscilBankLen][0] = incomingFrequency;
+            oscilBank[oscilBankLen] = [] // Two-dimensional Array
+            oscilBank[oscilBankLen][0] = incomingFrequency;
 
-        for (i = 0; i < oscNum; i++) {
-            let randomOffset = Math.random() * 5;     // Math.random() will produce a pseudo-random number >= 0 but < 1;
-            // But, I want a range from 0 - 2!
-            // the more the randomOffset multiplier increases, the partials become less harmonic.
-            let fatFreq = freq - randomOffset;
-            fatFreq += i
-            oscilBank[oscilBankLen][i + 1] = new Oscil(audioCtx, fatFreq, amp).play(attackVal, decayVal, sustainVal);
-
+            for (i = 0; i < oscNum; i++) {
+                let randomOffset = Math.random() * 5;     // Math.random() will produce a pseudo-random number >= 0 but < 1;
+                // But, I want a range from 0 - 2!
+                // the more the randomOffset multiplier increases, the partials become less harmonic.
+                let fatFreq = freq - randomOffset;
+                fatFreq += i
+                oscilBank[oscilBankLen][i + 1] = new Oscil(audioCtx, fatFreq, amp).play(attackVal, decayVal, sustainVal);
+                
+            }
+            partial++;
+            freq = incomingFrequency * partial;
         }
-        partial++;
-        freq = incomingFrequency * partial;
-    }
+    } else if (synthChoice === 2) {
+        let freq = incomingFrequency;
+        let partial = 1;
 
-    // console.log(oscilBank);
+        while (freq <= nyquist) {  // 'while' loops run while a condition remains true
+            let amp = 0.3 * 1;
+            amp /= partial;
+
+            let oscilBankLen = oscilBank.length;
+
+            oscilBank[oscilBankLen] = [] // Two-dimensional Array
+            oscilBank[oscilBankLen][0] = incomingFrequency;
+
+            for (i = 0; i < oscNum; i++) {
+                let randomOffset = Math.random() * 5;     // Math.random() will produce a pseudo-random number >= 0 but < 1;
+                // But, I want a range from 0 - 2!
+                // the more the randomOffset multiplier increases, the partials become less harmonic.
+                let fatFreq = freq - randomOffset;
+                fatFreq += i
+                oscilBank[oscilBankLen][i + 1] = new Oscil(audioCtx, fatFreq, amp).playFiltered(attackVal, decayVal, sustainVal, filter);
+                
+            }
+            partial++;
+            freq = incomingFrequency * partial;
+        }
+    }
 };
 
 function stopOscillator(e) {
@@ -114,27 +149,6 @@ keysArray.forEach(key => key.addEventListener('mousedown', getClickedFrequency) 
 
 keysArray.forEach(key => key.addEventListener('mouseup', stopOscillator));
 
-// ========== SUBSTRACTIVE SYNTHESIS ========== //
-const bufferSize = audioCtx.sampleRate * 3;
-
-const noiseBuffer = audioCtx.createBuffer(1, bufferSize, audioCtx.sampleRate);
-
-let data = noiseBuffer.getChannelData(0);
-
-for (i=0; i < bufferSize; i++) {
-    data[i] = Math.random() * 2 - 1;
-}
-
-const noise = audioCtx.createBufferSource();
-
-noise.buffer = noiseBuffer;
-
-const noiseGain = audioCtx.createGain();
-
-noise.connect(noiseGain);
-
-noiseGain.gain.value = 0.3;
-
 // ======= CREATE A FILTER ======== //
 let filterOptions = ["none", "lowpass", "highpass", "bandpass", "notch"]
 
@@ -147,12 +161,12 @@ const qSpan = document.querySelector("#qualValue");
 
 let filterChoice;
 
-const filter = audioCtx.createBiquadFilter();
+// CREATE FILTER
+let filter = new Filter(audioCtx, filterChoice, 1, 750);
 
 function selectFilterType() {
     filterChoice = filterList.selectedIndex;  // .selectedIndex will show which option in the list is selected
     filter.type = filterOptions[filterChoice];
-    console.log(filter.type);
 }
 
 function setCutoffFrequency() {
@@ -179,9 +193,9 @@ freqSlider.addEventListener("input", setCutoffFrequency);
 
 qSlider.addEventListener("input", setQValue);
 
-noiseGain.connect(filter);
+//noiseGain.connect(filter);
 
-filter.connect(audioCtx.destination);
+//filter.connect(audioCtx.destination);
 
 // ===== ENVELOPE GENERATOR ===== //
 
